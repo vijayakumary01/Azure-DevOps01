@@ -17,7 +17,7 @@ steps:
     scriptLocation: 'inlineScript'
     inlineScript: |
       # get app servers from resource group
-      $appVmList = az vm list | ConvertFrom-Json | Select-Object name, resourceGroup | Where-Object { $_.resourceGroup -like 'UKS-NMS-STGC-Immutable-APP' }
+      $appVmList = az vm list | ConvertFrom-Json | Select-Object name, resourceGroup | Where-Object { $_.resourceGroup -like 'VJRG' }
       $appVmNames = $appVmList | Select-Object -ExpandProperty name | ForEach-Object { $_ + $(domainName) }
       $appVmNamesString = ( $appVmNames | ForEach-Object { '"' + $_ + '"' } ) -join " "
                                        Write-Host "$appVmNamesString[0]";
@@ -40,7 +40,7 @@ steps:
       $tempScriptFile = New-TemporaryFile
       Set-Content -Path $tempScriptFile.FullName -Value $script
                                                   # retrieve HAP nodes
-      $hapVmList = az vm list --resource-group 'UKS-NMS-STGC-HAP-LB' | ConvertFrom-Json
+      $hapVmList = az vm list --resource-group 'VJRG' | ConvertFrom-Json
       $hapVmList = $hapVmList | Where-Object { $_.name -like 'sunms-svhapc*' }
                                                   # execute script on all nodes
       $hapVmList | ForEach-Object -ThrottleLimit 20 -Parallel {
