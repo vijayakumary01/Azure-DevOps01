@@ -13,7 +13,7 @@ steps:
 - task: AzureCLI@2
   inputs:
     azureSubscription: 'Microsoft Azure Internal Subscription(e759ce54-c56e-46f0-9abd-8326774ba9b9)'
-    scriptType: 'ps'
+    scriptType: 'bash'
     scriptLocation: 'inlineScript'
     inlineScript: |
       # get app servers from resource group
