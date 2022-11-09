@@ -13,14 +13,7 @@ steps:
 - task: Bash@3
   inputs:
     targetType: 'inline'
-    script: |
-      AZ_REPO=$(lsb_release -cs)
-      echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" |
-       sudo tee /etc/apt/sources.list.d/azure-cli.list
-      
-      AZ_VERSION=2.38.0
-            
-      sudo apt install -y --allow-downgrades azure-cli=$AZ_VERSION-1~$UBUNTU_CODENAME
+    script: 'choco install azure-cli --version=2.38.0 --force'
 
 - task: AzureCLI@2
   inputs:
