@@ -10,10 +10,49 @@ pool:
   vmImage: ubuntu-latest
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+- task: AzureCLI@2
+  inputs:
+    azureSubscription: 'Microsoft Azure Internal Subscription(e759ce54-c56e-46f0-9abd-8326774ba9b9)'
+    scriptType: 'ps'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      # get app servers from resource group
+      $appVmList = az vm list | ConvertFrom-Json | Select-Object name, resourceGroup | Where-Object { $_.resourceGroup -like 'UKS-NMS-STGC-Immutable-APP' }
+      $appVmNames = $appVmList | Select-Object -ExpandProperty name | ForEach-Object { $_ + $(domainName) }
+      $appVmNamesString = ( $appVmNames | ForEach-Object { '"' + $_ + '"' } ) -join " "
+                                       Write-Host "$appVmNamesString[0]";
+      Write-Host "App Server for maintainence activity: $appVmNamesString";
+      # prepare script to be executed on HAP nodes
+      $script = @"
+      #!/bin/bash
+      servers=($appVmNamesString)
+      echo "Servers that will be enabled: `${servers[@]}"
+      for server in "`${servers[@]}"
+      do
+          (
+              echo "enable server nms/`$server"
+              echo "enable server nms/`$server" | socat stdio tcp4-connect:127.0.0.1:9999
+              echo "Server `$server is enabled"
+          ) &
+      done
+      wait
+      "@
+      $tempScriptFile = New-TemporaryFile
+      Set-Content -Path $tempScriptFile.FullName -Value $script
+                                                  # retrieve HAP nodes
+      $hapVmList = az vm list --resource-group 'UKS-NMS-STGC-HAP-LB' | ConvertFrom-Json
+      $hapVmList = $hapVmList | Where-Object { $_.name -like 'sunms-svhapc*' }
+                                                  # execute script on all nodes
+      $hapVmList | ForEach-Object -ThrottleLimit 20 -Parallel {
+      $hapVm = $_
+      Write-Host "Processing HAP Server: $($hapVm.name)";
+      $cmdResultString = az vm run-command invoke --command-id RunShellScript --name $($hapVm.name) -g $($hapVm.resourceGroup) --scripts "@$($using:tempScriptFile.FullName)"
+          $cmdResult = $cmdResultString | ConvertFrom-Json
+      if ($cmdResult.value[0].code -ne 'ProvisioningState/succeeded') {
+      Write-Error "Failed to enable app hosts on $($hapVm.name)"
+      Write-Host $cmdResult
+      }
+      else {
+              Write-Host "enabled all app hosts on $($hapVm.name)"
+          }
+      }
