@@ -7,9 +7,22 @@ trigger:
 - main
 
 pool:
-  vmImage: windows-2019
+  vmImage: ubuntu-latest
 
 steps:
+- task: Bash@3
+  inputs:
+    targetType: 'inline'
+    script: |
+      AZ_REPO=$(lsb_release -cs)
+      echo "deb [arch=amd64] https://packages.microsoft.com/repos/azure-cli/ $AZ_REPO main" |
+       sudo tee /etc/apt/sources.list.d/azure-cli.list
+      
+      AZ_VERSION=2.2.0
+      UBUNTU_CODENAME=bionic
+      
+      sudo apt install -y --allow-downgrades azure-cli=$AZ_VERSION-1~$UBUNTU_CODENAME
+
 - task: AzureCLI@2
   inputs:
     azureSubscription: 'Microsoft Azure Internal Subscription(e759ce54-c56e-46f0-9abd-8326774ba9b9)'
